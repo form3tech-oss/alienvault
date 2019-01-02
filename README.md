@@ -1,6 +1,6 @@
 # AlienVault
 
-[![Build Status](https://travis-ci.org/form3tech-oss/terraform-provider-alienvault.svg?branch=master)](https://travis-ci.org/form3tech-oss/terraform-provider-alienvault)
+[![Build Status](https://travis-ci.org/form3tech-oss/alienvault.svg?branch=master)](https://travis-ci.org/form3tech-oss/alienvault)
 
 A basic Go package providing a client for the AlienVault API.
 
