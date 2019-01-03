@@ -18,6 +18,13 @@ type AWSCloudWatchJobParams struct {
 	Stream string `json:"streamName"`
 }
 
+func (job *AWSCloudWatchJob) enforceTypeValues() {
+	job.Custom = true
+	job.App = JobApplicationAWS
+	job.Action = JobActionMonitorCloudWatch
+	job.Type = JobTypeCollection
+}
+
 func (client *Client) GetAWSCloudWatchJobs() ([]AWSCloudWatchJob, error) {
 
 	req, err := client.createRequest("GET", "/scheduler", nil)
@@ -72,10 +79,7 @@ func (client *Client) CreateAWSCloudWatchJob(j *AWSCloudWatchJob) error {
 	}
 
 	// force values for this subtype of job
-	j.Custom = true
-	j.App = JobApplicationAWS
-	j.Action = JobActionMonitorCloudWatch
-	j.Type = JobTypeCollection
+	j.enforceTypeValues()
 
 	data, err := json.Marshal(j)
 	if err != nil {
@@ -106,6 +110,9 @@ func (client *Client) CreateAWSCloudWatchJob(j *AWSCloudWatchJob) error {
 }
 
 func (client *Client) UpdateAWSCloudWatchJob(j *AWSCloudWatchJob) error {
+
+	// force values for this subtype of job
+	j.enforceTypeValues()
 
 	data, err := json.Marshal(j)
 	if err != nil {

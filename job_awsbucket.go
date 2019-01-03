@@ -17,6 +17,13 @@ type AWSBucketJobParams struct {
 	Path       string `json:"path"`
 }
 
+func (job *AWSBucketJob) enforceTypeValues() {
+	job.Custom = true
+	job.App = JobApplicationAWS
+	job.Action = JobActionMonitorBucket
+	job.Type = JobTypeCollection
+}
+
 func (client *Client) GetAWSBucketJobs() ([]AWSBucketJob, error) {
 
 	req, err := client.createRequest("GET", "/scheduler", nil)
@@ -71,10 +78,7 @@ func (client *Client) CreateAWSBucketJob(j *AWSBucketJob) error {
 	}
 
 	// force values for this subtype of job
-	j.Custom = true
-	j.App = JobApplicationAWS
-	j.Action = JobActionMonitorBucket
-	j.Type = JobTypeCollection
+	j.enforceTypeValues()
 
 	data, err := json.Marshal(j)
 	if err != nil {
@@ -105,6 +109,9 @@ func (client *Client) CreateAWSBucketJob(j *AWSBucketJob) error {
 }
 
 func (client *Client) UpdateAWSBucketJob(j *AWSBucketJob) error {
+
+	// force values for this subtype of job
+	j.enforceTypeValues()
 
 	data, err := json.Marshal(j)
 	if err != nil {
