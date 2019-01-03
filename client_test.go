@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -12,6 +13,21 @@ import (
 	"gotest.tools/assert"
 )
 
+var testClient *Client
+
+func init() {
+
+	testClient = New(
+		os.Getenv("ALIENVAULT_FQDN"),
+		Credentials{
+			Username: os.Getenv("ALIENVAULT_USERNAME"),
+			Password: os.Getenv("ALIENVAULT_PASSWORD"),
+		})
+
+	testClient.Authenticate()
+}
+
+// We just test that authentication theoretically works here, whereas all resource tests will do a proper e2e auth
 func TestClientAuth(t *testing.T) {
 
 	actualToken := ""
