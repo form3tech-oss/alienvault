@@ -92,7 +92,7 @@ func TestAWSCloudWatchJob(t *testing.T) {
 
 	// test deleting
 
-	if err := testClient.DeleteAWSCloudWatchJob(testJob.UUID); err != nil {
+	if err := testClient.DeleteAWSCloudWatchJob(&testJob); err != nil {
 		t.Fatalf("Failed to delete job: %s", err)
 	}
 

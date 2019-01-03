@@ -89,7 +89,7 @@ func TestAWSBucketJob(t *testing.T) {
 
 	// test deleting
 
-	if err := testClient.DeleteAWSBucketJob(testJob.UUID); err != nil {
+	if err := testClient.DeleteAWSBucketJob(&testJob); err != nil {
 		t.Fatalf("Failed to delete job: %s", err)
 	}
 
