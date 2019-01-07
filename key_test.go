@@ -3,8 +3,8 @@ package alienvault
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func TestKeyManagement(t *testing.T) {
@@ -26,7 +26,14 @@ func TestKeyManagement(t *testing.T) {
 		t.Fatalf("Failed to create sensor key: %s", err)
 	}
 
-	assert.NotEmpty(t, key.ID, "Key should have an ID assigned")
+	refreshed, err := testClient.GetSensorKey(key.ID)
+	if err != nil {
+		t.Fatalf("Failed to refresh sensor key: %s", err)
+	}
+
+	assert.Equal(t, refreshed.ID, key.ID)
+
+	require.NotEmpty(t, key.ID, "Key should have an ID assigned")
 
 	require.Nil(t, testClient.DeleteSensorKey(key))
 

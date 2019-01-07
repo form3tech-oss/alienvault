@@ -64,6 +64,26 @@ func (client *Client) GetSensorKeys() ([]SensorKey, error) {
 	return keys, nil
 }
 
+func (client *Client) GetSensorKey(id string) (*SensorKey, error) {
+
+	req, err := client.createRequest("GET", fmt.Sprintf("/sensors/key/%s", id), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	key := SensorKey{}
+	if err := json.NewDecoder(resp.Body).Decode(&key); err != nil {
+		return nil, err
+	}
+
+	return &key, nil
+}
+
 func (client *Client) DeleteSensorKey(key *SensorKey) error {
 
 	req, err := client.createRequest("DELETE", fmt.Sprintf("/sensors/key/%s", key.ID), nil)
