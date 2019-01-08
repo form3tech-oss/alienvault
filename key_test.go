@@ -1,6 +1,7 @@
 package alienvault
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -8,6 +9,10 @@ import (
 )
 
 func TestKeyManagement(t *testing.T) {
+
+	// If you're having problems with the license not allowing more sensor keys, you can delete unclaimed keys caused by failing tests by uncommenting the following:
+	// deleteAllKeys()
+	// We don't do this all the time as we have no way of telling whether a real produciton key exists in the moment we make the API call. This is why Achi is asking AV for a separate test account.
 
 	if ok, err := testClient.HasSensorAvailability(); err != nil {
 		t.Fatalf("Failed to check sensor availability: %s", err)
@@ -31,7 +36,7 @@ func TestKeyManagement(t *testing.T) {
 		t.Fatalf("Failed to refresh sensor key: %s", err)
 	}
 
-	assert.Equal(t, refreshed.ID, key.ID)
+	assert.Equal(t, refreshed.ID, key.ID, "Refreshed key should contain the original ID")
 
 	require.NotEmpty(t, key.ID, "Key should have an ID assigned")
 
@@ -48,4 +53,19 @@ func TestKeyManagement(t *testing.T) {
 		}
 	}
 
+}
+
+func deleteAllKeys() error {
+	keys, err := testClient.GetSensorKeys()
+	if err != nil {
+		return fmt.Errorf("Failed to list sensor keys: %s", err)
+	}
+
+	for _, k := range keys {
+		err := testClient.DeleteSensorKey(&k)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

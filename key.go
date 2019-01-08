@@ -66,22 +66,17 @@ func (client *Client) GetSensorKeys() ([]SensorKey, error) {
 
 func (client *Client) GetSensorKey(id string) (*SensorKey, error) {
 
-	req, err := client.createRequest("GET", fmt.Sprintf("/sensors/key/%s", id), nil)
+	keys, err := client.GetSensorKeys()
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return nil, err
+	for _, key := range keys {
+		if key.ID == id {
+			return &key, nil
+		}
 	}
 
-	key := SensorKey{}
-	if err := json.NewDecoder(resp.Body).Decode(&key); err != nil {
-		return nil, err
-	}
-
-	return &key, nil
+	return nil, fmt.Errorf("Key not found")
 }
 
 func (client *Client) DeleteSensorKey(key *SensorKey) error {
