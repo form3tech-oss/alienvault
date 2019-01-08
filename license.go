@@ -56,6 +56,7 @@ func (client *Client) HasSensorAvailability() (bool, error) {
 	return len(sensors) < license.SensorNodeLimit, nil
 }
 
+// HasSensorKeyAvailability tells us whether we have room to create new sensor keys using the current license
 func (client *Client) HasSensorKeyAvailability() (bool, error) {
 
 	sensors, err := client.GetSensors()
