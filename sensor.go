@@ -25,6 +25,18 @@ const (
 	SensorStatusReady SensorStatus = "Ready"
 )
 
+type sensorSetupPatch struct {
+	SetupStatus SensorSetupStatus `json:"setupStatus"`
+}
+
+// SensorSetupStatus refers to whether or not the sensor has had it's configuration finalised
+type SensorSetupStatus string
+
+const (
+	// SensorSetupStatusComplete indicates sensor has had it's configuration finalised
+	SensorSetupStatusComplete SensorSetupStatus = "Complete"
+)
+
 // WaitForSensorToBeReady blocks until the given sensor is ready. Pass a context with timeout to abort after a set time.
 func (client *Client) WaitForSensorToBeReady(ctx context.Context, sensor *Sensor) error {
 
@@ -150,6 +162,35 @@ func (client *Client) UpdateSensor(sensor *Sensor) error {
 	}
 
 	sensor.ID = createdSensor.ID
+	return nil
+}
+
+// CompleteSetup marks a sensor as having it's setup finalised
+func (client *Client) CompleteSetup(sensor *Sensor) error {
+
+	sensorPatch := sensorSetupPatch{
+		SetupStatus: SensorSetupStatusComplete,
+	}
+
+	data, err := json.Marshal(sensorPatch)
+	if err != nil {
+		return err
+	}
+
+	req, err := client.createRequest("PATCH", fmt.Sprintf("/sensors/%s", sensor.ID), bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Unexpected status code for sensor setup finalisation: %d", resp.StatusCode)
+	}
+
 	return nil
 }
 
