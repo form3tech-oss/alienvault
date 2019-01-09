@@ -12,7 +12,16 @@ type Sensor struct {
 	UUID        string `json:"uuid,omitempty"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Status      string `json:"status"`
 }
+
+// SensorStatus refers to whether or not the sensor is ready for jobs. "Ready" indicates that this is so.
+type SensorStatus string
+
+const (
+	// SensorStatusReady indicates sensor is ready for configuration
+	SensorStatusReady SensorStatus = "Ready"
+)
 
 // GetSensor returns a specific sensor as identified by the id parameter
 func (client *Client) GetSensor(id string) (*Sensor, error) {
