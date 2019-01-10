@@ -259,7 +259,6 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 		resp, err := anonymousClient.Get(url)
 		if err == nil {
 			b, _ := ioutil.ReadAll(resp.Body)
-			log.Printf("[WARN] Response body for status: %s\n", string(b))
 			if resp.StatusCode == 200 {
 				status := applianceStatusResponse{}
 				if err := json.Unmarshal(b, &status); err == nil {
@@ -317,13 +316,7 @@ func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, se
 		req.Header.Set("Content-Type", "application/json;charset=UTF-8")
 
 		if resp, err := anonymousClient.Do(req); err == nil {
-
-			// TODO: remove this debug
-			b, _ := ioutil.ReadAll(resp.Body)
-			log.Printf("[WARN] Response body for connect: %s\n", string(b))
-
 			if resp.StatusCode == http.StatusOK {
-
 				break
 			}
 		}
