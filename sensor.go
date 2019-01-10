@@ -30,12 +30,23 @@ type sensorActivation struct {
 	Description string `json:"description"`
 }
 
+type applianceStatusResponse struct {
+	Status ApplianceStatus `json:"status"`
+}
+
+type ApplianceStatus string
+
+const (
+	ApplianceStatusNotConnected ApplianceStatus = "notConnected"
+)
+
 // SensorStatus refers to whether or not the sensor is ready for jobs. "Ready" indicates that this is so.
 type SensorStatus string
 
 const (
 	// SensorStatusReady indicates sensor is ready for configuration
-	SensorStatusReady SensorStatus = "Ready"
+	SensorStatusReady          SensorStatus = "Ready"
+	SensorStatusConnectionLost SensorStatus = "Connection lost"
 )
 
 type sensorSetupPatch struct {
@@ -75,6 +86,24 @@ func (client *Client) waitForSensorToBeReady(ctx context.Context, sensor *Sensor
 		}
 	}
 
+}
+
+func (client *Client) SweepSensors() error {
+
+	sensors, err := client.GetSensors()
+	if err != nil {
+		return err
+	}
+
+	for _, sensor := range sensors {
+		if sensor.Status == SensorStatusConnectionLost {
+			if err := client.DeleteSensor(&sensor); err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
 }
 
 // GetSensor returns a specific sensor as identified by the id parameter
@@ -130,7 +159,24 @@ func (client *Client) GetSensors() ([]Sensor, error) {
 // CreateSensorViaAppliance creates a new sensor via the sensor appliance referenced by the provided IP address
 func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sensor, ip net.IP) error {
 
-	log.Printf("[DEBUG] creating key...")
+	log.Printf("[DEBUG] sweeping dead sensors...")
+
+	// remove any dead sensors to free up license slots
+	if err := client.SweepSensors(); err != nil {
+		return err
+	}
+
+	// AV sometimes takes a few seconds to free up license slots after a sweep for some reason
+	time.Sleep(time.Second * 5)
+
+	log.Printf("[DEBUG] checking license...")
+	if ok, err := client.HasSensorKeyAvailability(); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("the AlienVault license in use does not allow creation of more sensors")
+	}
+
+	log.Printf("[DEBUG] creating sensor key...")
 
 	// first of all we need to make sure we can get our hands on an ath code (aka sensor key) to activate our new sensor
 	// this may not be possible if we've maxed out the number of sensors on our license, so attempt this first and fail fast
@@ -171,10 +217,10 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 	count := 0
 	var createdSensor Sensor
 	for _, s := range sensors {
-		if s.SetupStatus != SensorSetupStatusComplete {
+		if s.SetupStatus != SensorSetupStatusComplete && s.Name == sensor.Name {
 			count++
 			if count > 1 {
-				return fmt.Errorf("failed to complete sensor setup as we found more than one sensor being set up at the same time, and could differentiate between them")
+				return fmt.Errorf("failed to complete sensor setup as we found more than one sensor with the specified name being set up at the same time, and could differentiate between them")
 			}
 			createdSensor = s
 		}
@@ -215,7 +261,15 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 			b, _ := ioutil.ReadAll(resp.Body)
 			log.Printf("[WARN] Response body for status: %s\n", string(b))
 			if resp.StatusCode == 200 {
-				break
+				status := applianceStatusResponse{}
+				if err := json.Unmarshal(b, &status); err == nil {
+					if status.Status == ApplianceStatusNotConnected {
+						break
+					} else {
+						return fmt.Errorf("Unexpected appliance status: %s", status.Status)
+					}
+				}
+
 			} else {
 				log.Printf("[ERROR] Status response code: %d", resp.StatusCode)
 			}
