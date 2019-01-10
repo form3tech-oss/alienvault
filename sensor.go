@@ -218,7 +218,7 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 	if err != nil {
 		panic(err)
 	}
-	panic(string(d))
+	return fmt.Errorf("DEBUG: %s", string(d))
 
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
