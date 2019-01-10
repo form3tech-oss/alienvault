@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"time"
@@ -214,12 +213,6 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 		MasterNode:  client.fqdn,
 	}
 
-	d, err := json.Marshal(activationPayload)
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Errorf("DEBUG: %s", string(d))
-
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
 		return err
@@ -229,6 +222,9 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Origin", fmt.Sprintf("https://%s", ip.String()))
+	req.Header.Set("Referer", fmt.Sprintf("https://%s/", ip.String()))
+	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
 
 	resp, err := anonymousClient.Do(req)
 	if err != nil {
@@ -236,8 +232,8 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 	}
 
 	// todo remove this debug!
-	data, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(data))
+	//data, _ := ioutil.ReadAll(resp.Body)
+	//return fmt.Errorf("DEBUG: %s", string(data))
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected HTTP status code on sensor activation: %d", resp.StatusCode)
