@@ -146,7 +146,7 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 	}
 
 	// the sensor appliance is alive! cool, now we can activate it with our auth code
-	if err := client.activateSensorAppliance(ip, sensor, key); err != nil {
+	if err := client.activateSensorAppliance(ctx, ip, sensor, key); err != nil {
 		return err
 	}
 
@@ -205,7 +205,7 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 	}
 }
 
-func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *SensorKey) error {
+func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, sensor *Sensor, key *SensorKey) error {
 	anonymousClient := &http.Client{
 		Timeout: time.Second * 5,
 	}
@@ -217,26 +217,40 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 		MasterNode:  client.fqdn,
 	}
 
-	b := new(bytes.Buffer)
-	if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
-		return err
-	}
+	ticker := time.NewTicker(time.Second * 30)
+	defer ticker.Stop()
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/api/1.0/connect", ip.String()), b)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Origin", fmt.Sprintf("https://%s", ip.String()))
-	req.Header.Set("Referer", fmt.Sprintf("https://%s/", ip.String()))
-	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+	for {
+		b := new(bytes.Buffer)
+		if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
+			return err
+		}
 
-	resp, err := anonymousClient.Do(req)
-	if err != nil {
-		return err
-	}
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/api/1.0/connect", ip.String()), b)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Origin", fmt.Sprintf("https://%s", ip.String()))
+		req.Header.Set("Referer", fmt.Sprintf("https://%s/", ip.String()))
+		req.Header.Set("Content-Type", "application/json;charset=UTF-8")
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected HTTP status code on sensor activation: %d", resp.StatusCode)
+		if resp, err := anonymousClient.Do(req); err == nil {
+			if resp.StatusCode == http.StatusOK {
+
+				// TODO: remove this debug
+				b, _ := ioutil.ReadAll(resp.Body)
+				return fmt.Errorf("Response body: %s", string(b))
+
+				break
+			}
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
 	}
 
 	return nil
@@ -268,10 +282,6 @@ func (client *Client) completeSetup(sensor *Sensor) error {
 	if err != nil {
 		return err
 	}
-
-	// debug
-	b, _ := ioutil.ReadAll(resp.Body)
-	return fmt.Errorf("Response body: %s", string(b))
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("Unexpected status code for sensor setup finalisation: %d", resp.StatusCode)
