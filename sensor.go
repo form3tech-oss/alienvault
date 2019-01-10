@@ -204,6 +204,8 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 			log.Printf("[WARN] Response body for status: %s\n", string(b))
 			if resp.StatusCode == 200 {
 				break
+			} else {
+				log.Printf("[ERROR] Status response code: %d", resp.StatusCode)
 			}
 		} else {
 			log.Printf("[ERROR] Status check failed: %s", err)
