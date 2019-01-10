@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -193,8 +194,10 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 
 	//keep hitting the sensor appliance every 10 seconds until it responds over http, or until context ends
 	for {
-		if resp, err := anonymousClient.Get(url); err == nil && resp.StatusCode == http.StatusOK {
-			return nil
+		resp, err := anonymousClient.Get(url)
+		if err == nil {
+			b, _ := ioutil.ReadAll(resp.Body)
+			log.Printf("[WARN] Response body for status: %s\n", string(b))
 		}
 
 		select {
@@ -239,11 +242,10 @@ func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, se
 
 				// TODO: remove this debug
 				b, _ := ioutil.ReadAll(resp.Body)
-				return fmt.Errorf("Response body: %s", string(b))
+				log.Printf("[WARN] Response body for connect: %s\n", string(b))
 
 				break
 			}
-			return err
 		}
 
 		select {
