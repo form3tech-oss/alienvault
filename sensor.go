@@ -130,6 +130,8 @@ func (client *Client) GetSensors() ([]Sensor, error) {
 // CreateSensorViaAppliance creates a new sensor via the sensor appliance referenced by the provided IP address
 func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sensor, ip net.IP) error {
 
+	log.Printf("[DEBUG] creating key...")
+
 	// first of all we need to make sure we can get our hands on an ath code (aka sensor key) to activate our new sensor
 	// this may not be possible if we've maxed out the number of sensors on our license, so attempt this first and fail fast
 	key, err := client.CreateSensorKey(false)
@@ -141,10 +143,14 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 		_ = client.DeleteSensorKey(key)
 	}()
 
+	log.Printf("[DEBUG] waiting for appliance to be created...")
+
 	// wait until the sensor appliance has been created and is running an AV API over HTTP
 	if err := client.waitForSensorApplianceCreation(ctx, ip); err != nil {
 		return err
 	}
+
+	log.Printf("[DEBUG] activating sensor appliance...")
 
 	// the sensor appliance is alive! cool, now we can activate it with our auth code
 	if err := client.activateSensorAppliance(ctx, ip, sensor, key); err != nil {
@@ -153,6 +159,8 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 
 	// hacky wait to ensure sensor is registered on the AV side
 	time.Sleep(time.Second * 10)
+
+	log.Printf("[DEBUG] finding sensor to finish setup for...")
 
 	// TODO: we don't actually  know the ID of our new sensor yet, so until we figure that out, let's just look for a sensor that has an incomplete setupStatus. This is risky...
 	sensors, err := client.GetSensors()
@@ -176,12 +184,16 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 		return fmt.Errorf("no sensors found ready to be set up")
 	}
 
+	log.Printf("[DEBUG] completing setup...")
+
 	// we need the ID of the created sensor to complete setup
 	sensor.UUID = createdSensor.UUID
 
 	if err := client.completeSetup(&createdSensor); err != nil {
 		return err
 	}
+
+	log.Printf("[DEBUG] waiting for sensor to be live...")
 
 	return client.waitForSensorToBeReady(ctx, sensor)
 }
