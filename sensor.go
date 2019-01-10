@@ -13,7 +13,7 @@ import (
 
 // Sensor is a machine which gathers event data from your infrastrcture and absorbs it into the AV system
 type Sensor struct {
-	ID          string            `json:"id,omitempty"`
+	// Annoyingly, AV have two fields ID and UUID which both appear to be a primary key - but it is actually UUID that is used in APi calls and referenced in other resources. ID appears unused.
 	UUID        string            `json:"uuid,omitempty"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
@@ -60,7 +60,7 @@ func (client *Client) waitForSensorToBeReady(ctx context.Context, sensor *Sensor
 		case <-ctx.Done():
 			return fmt.Errorf("context expired, no longer waiting for sensor to be ready")
 		case <-ticker.C:
-			s, err := client.GetSensor(sensor.ID)
+			s, err := client.GetSensor(sensor.UUID)
 			if err != nil {
 				return err
 			}
@@ -93,7 +93,7 @@ func (client *Client) GetSensor(id string) (*Sensor, error) {
 	}
 
 	for _, sensor := range sensors {
-		if sensor.ID == id {
+		if sensor.UUID == id {
 			return &sensor, nil
 		}
 	}
@@ -165,7 +165,7 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 	}
 
 	// we need the ID of the created sensor to complete setup
-	sensor.ID = createdSensor.ID
+	sensor.UUID = createdSensor.UUID
 
 	if err := client.completeSetup(&createdSensor); err != nil {
 		return err
@@ -233,29 +233,7 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 
 // UpdateSensor updates an existing sensor
 func (client *Client) UpdateSensor(sensor *Sensor) error {
-
-	data, err := json.Marshal(sensor)
-	if err != nil {
-		return err
-	}
-
-	req, err := client.createRequest("PATCH", fmt.Sprintf("/sensors/%s", sensor.ID), bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	createdSensor := Sensor{}
-	if err := json.NewDecoder(resp.Body).Decode(&createdSensor); err != nil {
-		return err
-	}
-
-	sensor.ID = createdSensor.ID
-	return nil
+	return fmt.Errorf("Not implemented")
 }
 
 // completeSetup marks a sensor as having it's setup finalised
@@ -270,7 +248,7 @@ func (client *Client) completeSetup(sensor *Sensor) error {
 		return err
 	}
 
-	req, err := client.createRequest("PATCH", fmt.Sprintf("/sensors/%s", sensor.ID), bytes.NewBuffer(data))
+	req, err := client.createRequest("PATCH", fmt.Sprintf("/sensors/%s", sensor.UUID), bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
@@ -290,7 +268,7 @@ func (client *Client) completeSetup(sensor *Sensor) error {
 // DeleteSensor deletes an existing sensor
 func (client *Client) DeleteSensor(sensor *Sensor) error {
 
-	req, err := client.createRequest("DELETE", fmt.Sprintf("/sensors/%s", sensor.ID), nil)
+	req, err := client.createRequest("DELETE", fmt.Sprintf("/sensors/%s", sensor.UUID), nil)
 	if err != nil {
 		return err
 	}
