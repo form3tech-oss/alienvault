@@ -31,13 +31,13 @@ type sensorActivation struct {
 }
 
 type applianceStatusResponse struct {
-	Status ApplianceStatus `json:"status"`
+	Status applianceStatus `json:"status"`
 }
 
-type ApplianceStatus string
+type applianceStatus string
 
 const (
-	ApplianceStatusNotConnected ApplianceStatus = "notConnected"
+	applianceStatusNotConnected applianceStatus = "notConnected"
 )
 
 // SensorStatus refers to whether or not the sensor is ready for jobs. "Ready" indicates that this is so.
@@ -45,7 +45,8 @@ type SensorStatus string
 
 const (
 	// SensorStatusReady indicates sensor is ready for configuration
-	SensorStatusReady          SensorStatus = "Ready"
+	SensorStatusReady SensorStatus = "Ready"
+	// SensorStatusConnectionLost refers to a sensor configuration which has lost contact with the actual appliance, possibly becuse the appliance no longer exists.
 	SensorStatusConnectionLost SensorStatus = "Connection lost"
 )
 
@@ -88,7 +89,7 @@ func (client *Client) waitForSensorToBeReady(ctx context.Context, sensor *Sensor
 
 }
 
-func (client *Client) SweepSensors() error {
+func (client *Client) sweepSensors() error {
 
 	sensors, err := client.GetSensors()
 	if err != nil {
@@ -162,7 +163,7 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 	log.Printf("[DEBUG] sweeping dead sensors...")
 
 	// remove any dead sensors to free up license slots
-	if err := client.SweepSensors(); err != nil {
+	if err := client.sweepSensors(); err != nil {
 		return err
 	}
 
@@ -262,7 +263,7 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 			if resp.StatusCode == 200 {
 				status := applianceStatusResponse{}
 				if err := json.Unmarshal(b, &status); err == nil {
-					if status.Status == ApplianceStatusNotConnected {
+					if status.Status == applianceStatusNotConnected {
 						break
 					} else {
 						return fmt.Errorf("Unexpected appliance status: %s", status.Status)
