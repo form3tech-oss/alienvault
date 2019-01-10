@@ -172,6 +172,10 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 		}
 	}
 
+	if count == 0 {
+		return fmt.Errorf("no sensors found ready to be set up")
+	}
+
 	// we need the ID of the created sensor to complete setup
 	sensor.UUID = createdSensor.UUID
 
@@ -201,6 +205,8 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 			if resp.StatusCode == 200 {
 				break
 			}
+		} else {
+			log.Printf("[ERROR] Status check failed: %s", err)
 		}
 
 		select {
@@ -243,11 +249,12 @@ func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, se
 		req.Header.Set("Content-Type", "application/json;charset=UTF-8")
 
 		if resp, err := anonymousClient.Do(req); err == nil {
-			if resp.StatusCode == http.StatusOK {
 
-				// TODO: remove this debug
-				b, _ := ioutil.ReadAll(resp.Body)
-				log.Printf("[WARN] Response body for connect: %s\n", string(b))
+			// TODO: remove this debug
+			b, _ := ioutil.ReadAll(resp.Body)
+			log.Printf("[WARN] Response body for connect: %s\n", string(b))
+
+			if resp.StatusCode == http.StatusOK {
 
 				break
 			}
