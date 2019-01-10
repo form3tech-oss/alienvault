@@ -209,6 +209,8 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 		case <-ticker.C:
 		}
 	}
+
+	return nil
 }
 
 func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, sensor *Sensor, key *SensorKey) error {
