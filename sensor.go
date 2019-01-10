@@ -143,7 +143,7 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 		_ = client.DeleteSensorKey(key)
 	}()
 
-	log.Printf("[DEBUG] waiting for appliance to be created...")
+	log.Printf("[DEBUG] waiting for appliance to be created at %s...", ip.String())
 
 	// wait until the sensor appliance has been created and is running an AV API over HTTP
 	if err := client.waitForSensorApplianceCreation(ctx, ip); err != nil {
