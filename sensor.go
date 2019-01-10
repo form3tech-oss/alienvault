@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"time"
@@ -51,22 +52,25 @@ const (
 // waitForSensorToBeReady blocks until the given sensor is ready. Pass a context with timeout to abort after a set time.
 func (client *Client) waitForSensorToBeReady(ctx context.Context, sensor *Sensor) error {
 
-	ticker := time.NewTicker(time.Second * 10)
+	// this usually takes 10-30 minutes so no need to poll that often
+	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
 
 	for {
+
+		s, err := client.GetSensor(sensor.UUID)
+		if err != nil {
+			return err
+		}
+
+		if s.Status == SensorStatusReady {
+			return nil
+		}
+
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("context expired, no longer waiting for sensor to be ready")
+			return ctx.Err()
 		case <-ticker.C:
-			s, err := client.GetSensor(sensor.UUID)
-			if err != nil {
-				return err
-			}
-
-			if s.Status == SensorStatusReady {
-				return nil
-			}
 		}
 	}
 
@@ -231,10 +235,6 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 		return err
 	}
 
-	// todo remove this debug!
-	//data, _ := ioutil.ReadAll(resp.Body)
-	//return fmt.Errorf("DEBUG: %s", string(data))
-
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected HTTP status code on sensor activation: %d", resp.StatusCode)
 	}
@@ -268,6 +268,10 @@ func (client *Client) completeSetup(sensor *Sensor) error {
 	if err != nil {
 		return err
 	}
+
+	// debug
+	b, _ := ioutil.ReadAll(resp.Body)
+	return fmt.Errorf("Response body: %s", string(b))
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("Unexpected status code for sensor setup finalisation: %d", resp.StatusCode)
