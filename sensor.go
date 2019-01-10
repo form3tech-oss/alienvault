@@ -132,6 +132,10 @@ func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sens
 	if err != nil {
 		return err
 	}
+	// ensure the key we create gets deleted if it isn't used for any reason
+	defer func() {
+		_ = client.DeleteSensorKey(key)
+	}()
 
 	// wait until the sensor appliance has been created and is running an AV API over HTTP
 	if err := client.waitForSensorApplianceCreation(ctx, ip); err != nil {
@@ -210,12 +214,23 @@ func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *Se
 		MasterNode:  client.fqdn,
 	}
 
+	d, err := json.Marshal(activationPayload)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(d))
+
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
 		return err
 	}
 
-	resp, err := anonymousClient.Post(fmt.Sprintf("http://%s/api/1.0/connect", ip.String()), "application/json;charset=UTF-8", b)
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/api/1.0/connect", ip.String()), b)
+	if err != nil {
+		return err
+	}
+
+	resp, err := anonymousClient.Do(req)
 	if err != nil {
 		return err
 	}
