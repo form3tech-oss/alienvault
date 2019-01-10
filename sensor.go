@@ -5,16 +5,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"time"
 )
 
 // Sensor is a machine which gathers event data from your infrastrcture and absorbs it into the AV system
 type Sensor struct {
-	ID          string       `json:"id,omitempty"`
-	UUID        string       `json:"uuid,omitempty"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Status      SensorStatus `json:"status"`
+	ID          string            `json:"id,omitempty"`
+	UUID        string            `json:"uuid,omitempty"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Status      SensorStatus      `json:"status"`
+	SetupStatus SensorSetupStatus `json:"setupStatus"`
+}
+
+type sensorActivation struct {
+	//{"key":"${alienvault_sensor_key.main.id}","masterNode":"form3.alienvault.cloud","name":"${var.stack_name}-sensor","description":"${var.stack_name} sensor created by terraform"}
+	SensorKey   string `json:"key"`
+	MasterNode  string `json:"masterNode"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // SensorStatus refers to whether or not the sensor is ready for jobs. "Ready" indicates that this is so.
@@ -37,8 +49,8 @@ const (
 	SensorSetupStatusComplete SensorSetupStatus = "Complete"
 )
 
-// WaitForSensorToBeReady blocks until the given sensor is ready. Pass a context with timeout to abort after a set time.
-func (client *Client) WaitForSensorToBeReady(ctx context.Context, sensor *Sensor) error {
+// waitForSensorToBeReady blocks until the given sensor is ready. Pass a context with timeout to abort after a set time.
+func (client *Client) waitForSensorToBeReady(ctx context.Context, sensor *Sensor) error {
 
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
@@ -111,30 +123,111 @@ func (client *Client) GetSensors() ([]Sensor, error) {
 	return sensors, nil
 }
 
-// CreateSensor creates a new sensor
-func (client *Client) CreateSensor(sensor *Sensor) error {
+// CreateSensorViaAppliance creates a new sensor via the sensor appliance referenced by the provided IP address
+func (client *Client) CreateSensorViaAppliance(ctx context.Context, sensor *Sensor, ip net.IP) error {
 
-	data, err := json.Marshal(sensor)
+	// first of all we need to make sure we can get our hands on an ath code (aka sensor key) to activate our new sensor
+	// this may not be possible if we've maxed out the number of sensors on our license, so attempt this first and fail fast
+	key, err := client.CreateSensorKey(false)
 	if err != nil {
 		return err
 	}
 
-	req, err := client.createRequest("POST", "/sensors", bytes.NewBuffer(data))
+	// wait until the sensor appliance has been created and is running an AV API over HTTP
+	if err := client.waitForSensorApplianceCreation(ctx, ip); err != nil {
+		return err
+	}
+
+	// the sensor appliance is alive! cool, now we can activate it with our auth code
+	if err := client.activateSensorAppliance(ip, sensor, key); err != nil {
+		return err
+	}
+
+	// hacky wait to ensure sensor is registered on the AV side
+	time.Sleep(time.Second * 10)
+
+	// TODO: we don't actually  know the ID of our new sensor yet, so until we figure that out, let's just look for a sensor that has an incomplete setupStatus. This is risky...
+	sensors, err := client.GetSensors()
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return err
+	count := 0
+	var createdSensor Sensor
+	for _, s := range sensors {
+		if s.SetupStatus != SensorSetupStatusComplete {
+			count++
+			if count > 1 {
+				return fmt.Errorf("failed to complete sensor setup as we found more than one sensor being set up at the same time, and could differentiate between them")
+			}
+			createdSensor = s
+		}
 	}
 
-	createdSensor := Sensor{}
-	if err := json.NewDecoder(resp.Body).Decode(&createdSensor); err != nil {
-		return err
-	}
-
+	// we need the ID of the created sensor to complete setup
 	sensor.ID = createdSensor.ID
+
+	if err := client.completeSetup(&createdSensor); err != nil {
+		return err
+	}
+
+	return client.waitForSensorToBeReady(ctx, sensor)
+}
+
+func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net.IP) error {
+	anonymousClient := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	url := fmt.Sprintf("http://%s/api/1.0/status", ip.String())
+
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+
+	//keep hitting the sensor appliance every 10 seconds until it responds over http, or until context ends
+	for {
+		if resp, err := anonymousClient.Get(url); err == nil && resp.StatusCode == http.StatusOK {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+func (client *Client) activateSensorAppliance(ip net.IP, sensor *Sensor, key *SensorKey) error {
+	anonymousClient := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	activationPayload := sensorActivation{
+		Name:        sensor.Name,
+		Description: sensor.Description,
+		SensorKey:   key.ID,
+		MasterNode:  client.fqdn,
+	}
+
+	b := new(bytes.Buffer)
+	if err := json.NewEncoder(b).Encode(activationPayload); err != nil {
+		return err
+	}
+
+	resp, err := anonymousClient.Post(fmt.Sprintf("http://%s/api/1.0/connect", ip.String()), "application/json;charset=UTF-8", b)
+	if err != nil {
+		return err
+	}
+
+	// todo remove this debug!
+	data, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(data))
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unexpected HTTP status code on sensor activation: %d", resp.StatusCode)
+	}
+
 	return nil
 }
 
@@ -165,8 +258,8 @@ func (client *Client) UpdateSensor(sensor *Sensor) error {
 	return nil
 }
 
-// CompleteSetup marks a sensor as having it's setup finalised
-func (client *Client) CompleteSetup(sensor *Sensor) error {
+// completeSetup marks a sensor as having it's setup finalised
+func (client *Client) completeSetup(sensor *Sensor) error {
 
 	sensorPatch := sensorSetupPatch{
 		SetupStatus: SensorSetupStatusComplete,
