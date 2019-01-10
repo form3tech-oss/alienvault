@@ -197,7 +197,10 @@ func (client *Client) waitForSensorApplianceCreation(ctx context.Context, ip net
 		resp, err := anonymousClient.Get(url)
 		if err == nil {
 			b, _ := ioutil.ReadAll(resp.Body)
-			log.Printf("[WARN] Response body for status: %s\n", string(b))
+			log.Printf("[DEBUG] Response body for status: %s\n", string(b))
+			if resp.StatusCode == 200 {
+				break
+			}
 		}
 
 		select {
@@ -242,7 +245,7 @@ func (client *Client) activateSensorAppliance(ctx context.Context, ip net.IP, se
 
 				// TODO: remove this debug
 				b, _ := ioutil.ReadAll(resp.Body)
-				log.Printf("[WARN] Response body for connect: %s\n", string(b))
+				log.Printf("[DEBUG] Response body for connect: %s\n", string(b))
 
 				break
 			}
