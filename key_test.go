@@ -10,10 +10,6 @@ import (
 
 func TestKeyManagement(t *testing.T) {
 
-	// If you're having problems with the license not allowing more sensor keys, you can delete unclaimed keys caused by failing tests by uncommenting the following:
-	// deleteAllKeys()
-	// We don't do this all the time as we have no way of telling whether a real produciton key exists in the moment we make the API call. This is why Achi is asking AV for a separate test account.
-
 	if ok, err := testClient.HasSensorAvailability(); err != nil {
 		t.Fatalf("Failed to check sensor availability: %s", err)
 	} else if !ok {
@@ -26,7 +22,7 @@ func TestKeyManagement(t *testing.T) {
 		t.Skip("Cannot test sensor key management, your license does not have room for more sensor keys.")
 	}
 
-	key, err := testClient.CreateSensorKey(false)
+	key, err := testClient.CreateSensorKey()
 	if err != nil {
 		t.Fatalf("Failed to create sensor key: %s", err)
 	}
