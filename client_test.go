@@ -24,7 +24,9 @@ func init() {
 			Password: os.Getenv("ALIENVAULT_PASSWORD"),
 		})
 
-	testClient.Authenticate()
+	if err := testClient.Authenticate(); err != nil {
+		panic(err)
+	}
 }
 
 // We just test that authentication theoretically works here, whereas all resource tests will do a proper e2e auth

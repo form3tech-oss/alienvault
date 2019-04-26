@@ -52,6 +52,9 @@ func (client *Client) createRequest(method string, path string, body io.Reader) 
 	req.Header.Set("Origin", fmt.Sprintf("https://%s", client.fqdn))
 	req.Header.Set("Referer", fmt.Sprintf("https://%s/", client.fqdn))
 	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+	req.Header.Set("X-Forwarded-For", "127.0.0.1")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.108 Safari/537.36")
+
 	return req, nil
 }
 
