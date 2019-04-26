@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -99,7 +100,8 @@ func (client *Client) Authenticate() error {
 		}
 
 		if resp.StatusCode != 200 {
-			return fmt.Errorf("Unexpected status code for auth: %d", resp.StatusCode)
+			d,_ := ioutil.ReadAll(resp.Body)
+			return fmt.Errorf("Unexpected status code for auth: %d: %s", resp.StatusCode, string(d))
 		}
 	}
 
