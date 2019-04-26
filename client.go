@@ -53,7 +53,6 @@ func (client *Client) createRequest(method string, path string, body io.Reader) 
 	req.Header.Set("Origin", fmt.Sprintf("https://%s", client.fqdn))
 	req.Header.Set("Referer", fmt.Sprintf("https://%s/", client.fqdn))
 	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
-	
 	return req, nil
 }
 
