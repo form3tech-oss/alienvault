@@ -13,6 +13,8 @@ import (
 	"gotest.tools/assert"
 )
 
+const TestAPIVersion = 2
+
 var testClient *Client
 
 func init() {
@@ -24,7 +26,7 @@ func init() {
 			Password: os.Getenv("ALIENVAULT_PASSWORD"),
 		},
 		true,
-		2,
+		TestAPIVersion,
 	)
 
 	if err := testClient.Authenticate(); err != nil {
@@ -58,7 +60,7 @@ func TestClientAuth(t *testing.T) {
 		Password: "something",
 	}
 
-	client := New(strings.Replace(ts.URL, "https://", "", -1), creds, true, 2)
+	client := New(strings.Replace(ts.URL, "https://", "", -1), creds, true, TestAPIVersion)
 
 	err := client.Authenticate()
 	require.Nil(t, err)
