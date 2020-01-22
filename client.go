@@ -33,7 +33,7 @@ func New(fqdn string, creds Credentials, skipTLSVerification bool) *Client {
         fqdn:                fqdn,
         creds:               creds,
         skipTLSVerification: skipTLSVerification,
-        urlPrefix:           fmt.Sprintf("https://%s/api/1.0", fqdn),
+        urlPrefix:           fmt.Sprintf("https://%s/api/2.0", fqdn),
     }
 }
 
