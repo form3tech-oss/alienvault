@@ -54,7 +54,7 @@ func TestKeyManagement(t *testing.T) {
 func deleteAllKeys() error {
 	keys, err := testClient.GetSensorKeys()
 	if err != nil {
-		return fmt.Errorf("Failed to list sensor keys: %s", err)
+		return fmt.Errorf("failed to list sensor keys: %s", err)
 	}
 
 	for _, k := range keys {
